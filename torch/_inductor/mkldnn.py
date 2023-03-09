@@ -5,7 +5,7 @@ from functools import reduce
 from typing import Optional
 
 import torch
-import torch._dynamo.config as dynamo_config
+from torch._dynamo import config as dynamo_config
 import torch.nn as nn
 import torch.nn.functional as F
 

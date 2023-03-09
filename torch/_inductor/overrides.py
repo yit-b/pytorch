@@ -7,6 +7,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from torch import _prims
+from torch._dynamo import config as dynamo_config
 from torch._dynamo.utils import detect_fake_mode
 from torch.fx.experimental.optimization import (
     matches_module_pattern,
