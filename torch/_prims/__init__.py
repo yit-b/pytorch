@@ -14,6 +14,7 @@ import torch.library
 from torch import sym_float, Tensor, TypedStorage
 from torch._C import _get_default_device
 from torch._prims.nvfuser_prims import register_nvprims
+from torch._prims.rng_prims import register_rng_prims
 from torch._prims_common import (
     check,
     Dim,
@@ -264,6 +265,7 @@ def _make_prim(
     meta: Callable,
     impl_aten: Callable,
     doc: str,
+    tags: Sequence[torch.Tag] = (),
 ):
     """
     Creates a primitive operation.
@@ -299,6 +301,7 @@ def _make_prim(
 
     _prim_packet = getattr(torch._ops.ops.prims, name)
     _prim = _prim_packet.default
+    _prim._tags = tags
 
     from torch._subclasses.fake_tensor import contains_tensor_types
 
@@ -2964,3 +2967,4 @@ fft_c2r = _make_prim(
 )
 
 register_nvprims()
+register_rng_prims()
