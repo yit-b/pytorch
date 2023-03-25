@@ -1558,7 +1558,7 @@ class CppVecKernelChecker(CppVecKernel):
             index = self.rename_indexing(index)
             if self.simd_vec and not self.could_vec(name, index):
                 self.disable_vec(
-                    f"load with indirect indexing or non-contigous: {index}"
+                    f"load with indirect indexing or non-contiguous: {index}"
                 )
             return var
 
@@ -1594,7 +1594,7 @@ class CppVecKernelChecker(CppVecKernel):
 
             if self.simd_vec and not self.could_vec(name, index):
                 self.disable_vec(
-                    f"store with indirect indexing or non-contigous: {index}"
+                    f"store with indirect indexing or non-contiguous: {index}"
                 )
             return self.simd_vec
 
@@ -2100,11 +2100,11 @@ class CppKernelProxy(CppKernel):
 
             def eliminate_to_dtype(sub_graph: torch.fx.Graph):
                 def _eliminate_duplicate_to_node(sub_graph: torch.fx.Graph):
-                    # Eliminate the redudant to_dtype node. Let's consider a pattern as follows:
+                    # Eliminate the redundant to_dtype node. Let's consider a pattern as follows:
                     #   graph():
                     #     %to_dtype1 = call_method[target=to_dtype](args = (%ops, %input, torch.float), kwargs = {})
                     #     %to_dtype2 = call_method[target=to_dtype](args = (%ops, %to_dtype1, torch.float), kwargs = {})
-                    # Regarding the first to_dtype, it is redudant because the second to_type also converts to the
+                    # Regarding the first to_dtype, it is redundant because the second to_type also converts to the
                     # torch.float. Hence, we remove the first to_type
                     def _used_by_to(to_node: torch.fx.Node):
                         return all(usr.target == "to_dtype" for usr in to_node.users)
@@ -2167,7 +2167,7 @@ class CppKernelProxy(CppKernel):
             with kernel_group.new_kernel(cls, *args) as kernel:
                 run(kernel)
 
-                # Ugly hack to maitain the metrics kernel count since
+                # Ugly hack to maintain the metrics kernel count since
                 # we only count in CppKernelProxy, not those contained in it
                 metrics.generated_kernel_count -= 1
 
