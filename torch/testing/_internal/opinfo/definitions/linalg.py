@@ -1356,19 +1356,19 @@ op_db: List[OpInfo] = [
         skips=(
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_amp',
-                device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_no_amp',
-				device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_no_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
         ),
     ),
@@ -1724,19 +1724,19 @@ op_db: List[OpInfo] = [
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_amp',
-                device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_no_amp',
-				device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_no_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
         ),
     ),
@@ -1770,19 +1770,19 @@ op_db: List[OpInfo] = [
             DecorateInfo(unittest.expectedFailure, "TestBwdGradients", "test_fn_grad"),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_amp',
-                device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_no_amp',
-				device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_no_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
         ),
     ),
@@ -1799,19 +1799,19 @@ op_db: List[OpInfo] = [
         skips=(
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_amp',
-                device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_no_amp',
-				device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_no_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
         ),
     ),
@@ -2306,19 +2306,19 @@ op_db: List[OpInfo] = [
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_amp',
-                device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_no_amp',
-				device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_no_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
         ),
     ),
@@ -2338,19 +2338,19 @@ op_db: List[OpInfo] = [
         skips=(
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_amp',
-                device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
             DecorateInfo(
                 unittest.skip("Skipped!"),
-                'TestFakeTensor',
-                'test_fake_crossref_backward_no_amp',
-				device_type='cuda',
+                "TestFakeTensor",
+                "test_fake_crossref_backward_no_amp",
+                device_type="cuda",
                 dtypes=[torch.float32],
-                active_if=TEST_WITH_ROCM
+                active_if=TEST_WITH_ROCM,
             ),
         ),
     ),
