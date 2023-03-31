@@ -1659,16 +1659,10 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::collective(
           fn(inputs[i], outputs[i], ncclComm->getNcclComm(), ncclStream),
           ncclComm->getNcclCommFailureReason());
 #else
-      if (!nccl_use_nonblocking()) {
-        C10D_NCCL_CHECK(
-            fn(inputs[i], outputs[i], ncclComm->getNcclComm(), ncclStream),
-            ncclComm->getNcclCommFailureReason());
-      } else {
-        C10D_NCCL_CHECK_NONBLOCKING(
-            fn(inputs[i], outputs[i], ncclComm->getNcclComm(), ncclStream),
-            ncclComm->getNcclComm(),
-            ncclComm->getNcclCommFailureReason());
-      }
+      C10D_NCCL_CHECK_NONBLOCKING(
+          fn(inputs[i], outputs[i], ncclComm->getNcclComm(), ncclStream),
+          ncclComm->getNcclComm(),
+          ncclComm->getNcclCommFailureReason());
 #endif
     }
   }
@@ -1823,23 +1817,15 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::pointToPoint(
              p2pTargetRank),
           ncclComms[i]->getNcclCommFailureReason());
 #else
-      if (!nccl_use_nonblocking()) {
-        C10D_NCCL_CHECK(
-            fn(tensors[i],
-               ncclComms[i]->getNcclComm(),
-               ncclStream,
-               p2pTargetRank),
-            ncclComms[i]->getNcclCommFailureReason());
-      } else {
-        C10D_NCCL_CHECK_NONBLOCKING(
-            fn(tensors[i],
-               ncclComms[i]->getNcclComm(),
-               ncclStream,
-               p2pTargetRank),
-            ncclComms[i]->getNcclComm(),
-            ncclComms[i]->getNcclCommFailureReason());
-      }
-#endif
+      C10D_NCCL_CHECK_NONBLOCKING(
+          fn(tensors[i],
+             ncclComms[i]->getNcclComm(),
+             ncclStream,
+             p2pTargetRank),
+          ncclComms[i]->getNcclComm(),
+          ncclComms[i]->getNcclCommFailureReason());
+
+
     }
   }
 
@@ -3103,3 +3089,4 @@ bool ProcessGroupNCCL::isUCCAvailable() const {
 } // namespace c10d
 
 #endif // USE_C10D_NCCL
+      
