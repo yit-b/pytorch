@@ -1824,8 +1824,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::pointToPoint(
              p2pTargetRank),
           ncclComms[i]->getNcclComm(),
           ncclComms[i]->getNcclCommFailureReason());
-
-
+#endif
     }
   }
 
@@ -3089,4 +3088,3 @@ bool ProcessGroupNCCL::isUCCAvailable() const {
 } // namespace c10d
 
 #endif // USE_C10D_NCCL
-      

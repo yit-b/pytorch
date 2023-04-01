@@ -753,11 +753,11 @@ void all2all_single_equal_split(
           ncclRecv(recvbuff + r * rankdiff, count, type, r, comm, stream));
     }
   }
-  if (!comm_nonblocking) {
-    NCCL_CHECK(ncclGroupEnd());
-  } else {
-    NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
-  }
+#ifndef NCCL_HAS_COMM_NONBLOCKING
+  NCCL_CHECK(ncclGroupEnd());
+#else
+  NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
+#endif
 #endif
 #else
   AT_ERROR("all2all is only supported for NCCL lib version >= 2.7.0");
@@ -811,11 +811,11 @@ void all2all_single_unequal_split(
           stream));
     }
   }
-  if (!comm_nonblocking) {
-    NCCL_CHECK(ncclGroupEnd());
-  } else {
-    NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
-  }
+#ifndef NCCL_HAS_COMM_NONBLOCKING
+  NCCL_CHECK(ncclGroupEnd());
+#else
+  NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
+#endif
 #else
   AT_ERROR("all2all is only supported for NCCL lib version >= 2.7.0");
 #endif
@@ -859,11 +859,11 @@ void all2all(
           stream.stream()));
     }
   }
-  if (!comm_nonblocking) {
-    NCCL_CHECK(ncclGroupEnd());
-  } else {
-    NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
-  }
+#ifndef NCCL_HAS_COMM_NONBLOCKING
+  NCCL_CHECK(ncclGroupEnd());
+#else
+  NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
+#endif
 #else
   AT_ERROR("all2all is only supported for NCCL lib version >= 2.7.0");
 #endif
@@ -882,25 +882,25 @@ void send(
 #if defined(NCCL_MAJOR) && (NCCL_MAJOR == 2) && defined(NCCL_MINOR) && \
     (NCCL_MINOR >= 7)
   using namespace torch::cuda::nccl::detail;
-  if (!comm_nonblocking) {
-    NCCL_CHECK(ncclSend(
-        input.data_ptr(),
-        input.numel(),
-        to_nccl_data_type(input),
-        dst,
-        to_nccl_comm(comm),
-        stream.stream()));
-  } else {
-    NCCL_CHECK_NONBLOCKING(
-        ncclSend(
-            input.data_ptr(),
-            input.numel(),
-            to_nccl_data_type(input),
-            dst,
-            to_nccl_comm(comm),
-            stream.stream()),
-        comm);
-  }
+#ifndef NCCL_HAS_COMM_NONBLOCKING
+  NCCL_CHECK(ncclSend(
+      input.data_ptr(),
+      input.numel(),
+      to_nccl_data_type(input),
+      dst,
+      to_nccl_comm(comm),
+      stream.stream()));
+#else
+  NCCL_CHECK_NONBLOCKING(
+      ncclSend(
+          input.data_ptr(),
+          input.numel(),
+          to_nccl_data_type(input),
+          dst,
+          to_nccl_comm(comm),
+          stream.stream()),
+      comm);
+#endif
 #else
   AT_ERROR("Send is only supported for NCCL lib version >= 2.7.0");
 #endif
@@ -982,11 +982,11 @@ void gather(
   } else {
     NCCL_CHECK(ncclSend(sendbuff, count, type, root, comm, stream));
   }
-  if (!comm_nonblocking) {
-    NCCL_CHECK(ncclGroupEnd());
-  } else {
-    NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
-  }
+#ifndef NCCL_HAS_COMM_NONBLOCKING
+  NCCL_CHECK(ncclGroupEnd());
+#else
+  NCCL_CHECK_NONBLOCKING(ncclGroupEnd(), _comm);
+#endif
 
 #else
   AT_ERROR("gather is only supported for NCCL lib version >= 2.7.0");
@@ -1010,13 +1010,13 @@ void scatter(
 
   auto comm = to_nccl_comm(_comm);
   int numranks, cur_rank;
-  if (!comm_nonblocking) {
-    NCCL_CHECK(ncclCommCount(comm, &numranks));
-    NCCL_CHECK(ncclCommUserRank(comm, &cur_rank));
-  } else {
-    NCCL_CHECK_NONBLOCKING(ncclCommCount(comm, &numranks), _comm);
-    NCCL_CHECK_NONBLOCKING(ncclCommUserRank(comm, &cur_rank), _comm);
-  }
+#ifndef NCCL_HAS_COMM_NONBLOCKING
+  NCCL_CHECK(ncclCommCount(comm, &numranks));
+  NCCL_CHECK(ncclCommUserRank(comm, &cur_rank));
+#else
+  NCCL_CHECK_NONBLOCKING(ncclCommCount(comm, &numranks), _comm);
+  NCCL_CHECK_NONBLOCKING(ncclCommUserRank(comm, &cur_rank), _comm);
+#endif
   if (!comm_nonblocking) {
     NCCL_CHECK(ncclGroupStart());
   } else {
