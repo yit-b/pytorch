@@ -2601,8 +2601,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::alltoall_base(
               output,
               this->getSize(),
               comm,
-              stream,
-              nccl_use_nonblocking());
+              stream);
           return ncclSuccess;
         },
         OpType::ALLTOALL_BASE,
@@ -2660,8 +2659,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::alltoall_base(
               input.element_size(),
               input.scalar_type(),
               comm,
-              stream,
-              nccl_use_nonblocking());
+              stream);
           return ncclSuccess;
         },
         OpType::ALLTOALL_BASE,
@@ -2692,7 +2690,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::alltoall(
           ncclComm_t comm,
           at::cuda::CUDAStream& stream) {
         torch::cuda::nccl::all2all(
-            outputTensors, inputTensors, comm, stream, nccl_use_nonblocking());
+            outputTensors, inputTensors, comm, stream);
         return ncclSuccess;
       },
       [&](std::vector<at::cuda::CUDAStream>&,
@@ -2721,7 +2719,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::send(
           at::cuda::CUDAStream& stream,
           int dst) {
         torch::cuda::nccl::send(
-            input, comm, stream, dst, nccl_use_nonblocking());
+            input, comm, stream, dst);
         return ncclSuccess;
       },
       dstRank,
@@ -2742,7 +2740,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::recv(
           at::cuda::CUDAStream& stream,
           int src) {
         torch::cuda::nccl::recv(
-            output, comm, stream, src, nccl_use_nonblocking());
+            output, comm, stream, src);
         return ncclSuccess;
       },
       srcRank,
@@ -2919,8 +2917,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::gather(
             outputs,
             comm,
             stream,
-            root,
-            nccl_use_nonblocking());
+            root);
         return ncclSuccess;
       },
       OpType::GATHER,
@@ -3011,8 +3008,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::scatter(
             outputTensors[0],
             comm,
             stream,
-            root,
-            nccl_use_nonblocking());
+            root);
         return ncclSuccess;
       },
       OpType::SCATTER,
