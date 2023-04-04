@@ -1287,8 +1287,7 @@ std::vector<std::shared_ptr<NCCLComm>>& ProcessGroupNCCL::getNCCLComm(
   if (!nccl_use_nonblocking()) {
     C10D_NCCL_CHECK(ncclGroupEnd(), c10::nullopt);
   } else {
-    C10D_NCCL_CHECK_NONBLOCKING_GROUPEND(
-        ncclGroupEnd(), ncclComms, c10::nullopt);
+    C10D_NCCL_CHECK_TIMEOUT_GROUPEND(ncclGroupEnd(), ncclComms, c10::nullopt);
   }
 #endif
 
@@ -1659,7 +1658,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::collective(
           fn(inputs[i], outputs[i], ncclComm->getNcclComm(), ncclStream),
           ncclComm->getNcclCommFailureReason());
 #else
-      C10D_NCCL_CHECK_NONBLOCKING(
+      C10D_NCCL_CHECK_TIMEOUT(
           fn(inputs[i], outputs[i], ncclComm->getNcclComm(), ncclStream),
           ncclComm->getNcclComm(),
           ncclComm->getNcclCommFailureReason());
@@ -1817,7 +1816,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::pointToPoint(
              p2pTargetRank),
           ncclComms[i]->getNcclCommFailureReason());
 #else
-      C10D_NCCL_CHECK_NONBLOCKING(
+      C10D_NCCL_CHECK_TIMEOUT(
           fn(tensors[i],
              ncclComms[i]->getNcclComm(),
              ncclStream,
@@ -2803,8 +2802,7 @@ void ProcessGroupNCCL::groupEnd() {
     for (auto& it : devNCCLCommMap_) {
       ncclComms_.insert(ncclComms_.end(), it.second.begin(), it.second.end());
     }
-    C10D_NCCL_CHECK_NONBLOCKING_GROUPEND(
-        ncclGroupEnd(), ncclComms_, c10::nullopt);
+    C10D_NCCL_CHECK_TIMEOUT_GROUPEND(ncclGroupEnd(), ncclComms_, c10::nullopt);
   }
 #endif
 #endif
@@ -2820,7 +2818,7 @@ void ProcessGroupNCCL::groupEndNonblocking(
   if (!nccl_use_nonblocking()) {
     C10D_NCCL_CHECK(ncclGroupEnd(), c10::nullopt);
   } else {
-    C10D_NCCL_CHECK_NONBLOCKING_GROUPEND(ncclGroupEnd(), comms, c10::nullopt);
+    C10D_NCCL_CHECK_TIMEOUT_GROUPEND(ncclGroupEnd(), comms, c10::nullopt);
   }
 #endif
 #endif
