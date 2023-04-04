@@ -2597,11 +2597,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::alltoall_base(
                 output.storage().data_ptr(), stream);
           }
           torch::cuda::nccl::all2all_single_equal_split(
-              input,
-              output,
-              this->getSize(),
-              comm,
-              stream);
+              input, output, this->getSize(), comm, stream);
           return ncclSuccess;
         },
         OpType::ALLTOALL_BASE,
@@ -2689,8 +2685,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::alltoall(
           at::Tensor& /* unused */,
           ncclComm_t comm,
           at::cuda::CUDAStream& stream) {
-        torch::cuda::nccl::all2all(
-            outputTensors, inputTensors, comm, stream);
+        torch::cuda::nccl::all2all(outputTensors, inputTensors, comm, stream);
         return ncclSuccess;
       },
       [&](std::vector<at::cuda::CUDAStream>&,
@@ -2718,8 +2713,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::send(
           ncclComm_t comm,
           at::cuda::CUDAStream& stream,
           int dst) {
-        torch::cuda::nccl::send(
-            input, comm, stream, dst);
+        torch::cuda::nccl::send(input, comm, stream, dst);
         return ncclSuccess;
       },
       dstRank,
@@ -2739,8 +2733,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::recv(
           ncclComm_t comm,
           at::cuda::CUDAStream& stream,
           int src) {
-        torch::cuda::nccl::recv(
-            output, comm, stream, src);
+        torch::cuda::nccl::recv(output, comm, stream, src);
         return ncclSuccess;
       },
       srcRank,
@@ -2912,12 +2905,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::gather(
             }
           }
         }
-        torch::cuda::nccl::gather(
-            inputTensors[0],
-            outputs,
-            comm,
-            stream,
-            root);
+        torch::cuda::nccl::gather(inputTensors[0], outputs, comm, stream, root);
         return ncclSuccess;
       },
       OpType::GATHER,
@@ -3004,11 +2992,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::scatter(
           }
         }
         torch::cuda::nccl::scatter(
-            inputs,
-            outputTensors[0],
-            comm,
-            stream,
-            root);
+            inputs, outputTensors[0], comm, stream, root);
         return ncclSuccess;
       },
       OpType::SCATTER,
