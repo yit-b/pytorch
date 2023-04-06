@@ -3530,29 +3530,25 @@ def pow_native(a, b):
     return ops.pow(a, b)
 
 
-def _is_ir_node_and_cuda(x):
-    if isinstance(x, ir.IRNode) and decode_device(x.get_device()).type == "cuda":
-        return True
-
-    return False
+fallback_pow = fallback_handler(aten.pow)
 
 
 @register_lowering(aten.pow, broadcast=True)
 def pow(a, b):
-    if _is_ir_node_and_cuda(a) and _is_ir_node_and_cuda(b):
-        assert a.get_dtype() in (
-            torch.float16,
-            torch.float32,
-            torch.float64,
-        ), "Pow input must be floating point."
     if isinstance(b, float) and b == int(b):
         return pow(a, int(b))
     elif isinstance(b, float) and b == 0.5:
         return sqrt(a)
     elif isinstance(b, int) and b == 1:
         return a
-    elif isinstance(b, int) and -32 < b < 32:
-        # Optimize away small fixed powers
+
+    dtype = a.get_dtype() if isinstance(a, ir.TensorBox) else b.get_dtype()
+    is_integer_pow = is_integer_dtype(dtype)
+    # Optimize away small fixed powers, or for integers inline the simple cases
+    embed_exponent = isinstance(b, int) and (
+        -32 < b < 32 or (is_integer_pow and b >= 0)
+    )
+    if embed_exponent:
         loader = a.make_loader()
 
         def fn(idx):
@@ -3570,6 +3566,10 @@ def pow(a, b):
             return full_like(b, 1)
         if a == 2 and is_float_dtype(b.get_dtype()):
             return exp2(b)
+
+    if is_integer_pow:
+        # ops.pow doesn't work for integers
+        return fallback_pow(a, b)
 
     return pow_native(a, b)
 
