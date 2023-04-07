@@ -30,8 +30,8 @@ import unittest
 import weakref
 
 import torch
-import torch._inductor.test_operators
 import torch._export.constraints as _export_constraints
+import torch._inductor.test_operators
 
 
 try:

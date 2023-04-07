@@ -1,19 +1,13 @@
-import contextlib
 import copy
-from typing import Callable, Tuple, Generator, Dict, Optional
+from typing import Callable, Tuple
 from unittest.mock import patch
-import dataclasses
 
 import torch
-import weakref
 import torch._dynamo as torchdynamo
 from torch._decomp import core_aten_decompositions
 from torch._dispatch.python import enable_python_dispatcher
 from torch.nn.utils import stateless
 from torch.utils import _pytree as pytree
-from torch.fx.experimental.symbolic_shapes import StrictMinMaxConstraint
-from torch.utils._sympy.value_ranges import ValueRanges
-import sympy
 
 from torch._functorch.aot_autograd import (
     AOTConfig,
@@ -23,10 +17,8 @@ from torch._functorch.aot_autograd import (
 )
 
 from torch.fx.experimental.proxy_tensor import (
-    get_proxy_slot,
     get_torch_dispatch_modes,
     has_proxy_slot,
-    make_fx,
     ProxyTorchDispatchMode,
     set_proxy_slot,
 )
@@ -208,5 +200,3 @@ def do_not_use_experimental_export(f: Callable, args: Tuple, training=False):
     # TODO (tmanlaibaatar) do sth with guards?
     graph_module, _, out_spec = _aot_capture(graph_module, flat_args)
     return ExportedProgram(fw_module=graph_module, example_inputs=original_flat_args, in_spec=in_spec, out_spec=out_spec)
-
-
