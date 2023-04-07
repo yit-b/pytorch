@@ -29,6 +29,7 @@ from torch._dynamo.testing import (
     CompileCounter,
     requires_static_shapes,
     same,
+    skipIfNotPy311,
     unsupported,
 )
 
@@ -1945,7 +1946,7 @@ class MiscTests(torch._dynamo.test_case.TestCase):
 
         self.assertTrue(same(ref, res))
 
-    @unittest.skipIf(sys.version_info < (3, 11), "linetable test for Python 3.11")
+    @skipIfNotPy311
     def test_linetable_311_writer1(self):
         def fn():
             a = 10
@@ -1970,7 +1971,7 @@ class MiscTests(torch._dynamo.test_case.TestCase):
             self.assertEqual(p1[0], p2[0])
         self.assertEqual(fn.__code__.co_lnotab, result[1].co_lnotab)
 
-    @unittest.skipIf(sys.version_info < (3, 11), "linetable test for Python 3.11")
+    @skipIfNotPy311
     def test_linetable_311_writer2(self):
         """
         test large ops (LOAD_METHOD) and EXTENDED_ARGS
@@ -4316,7 +4317,7 @@ def fn():
             for inst in insts:
                 self.assertNotIn("_NONE", inst.opname)
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires Python 3.11+")
+    @skipIfNotPy311
     def test_py311_jump_offset(self):
         new_inst = bytecode_transformation.create_instruction
         load_global = bytecode_transformation.create_load_global
@@ -4415,6 +4416,144 @@ def fn():
 
             dummy_opt = torch._dynamo.optimize("eager")(dummy_fn)
             self.assertEqual(dummy_opt(), test[3])
+
+    def test_encode_varint(self):
+        nums = [
+            0b111_101010_000000,
+            0b1100_111000_010101_101010,
+        ]
+        b = bytecode_transformation.encode_exn_tab_varint(
+            nums[0]
+        ) + bytecode_transformation.encode_exn_tab_varint(nums[1])
+        nums_new = []
+        b_iter = iter(bytes(b))
+        while True:
+            try:
+                nums_new.append(bytecode_transformation.decode_exn_tab_varint(b_iter))
+            except StopIteration:
+                break
+        self.assertEqual(nums, nums_new)
+
+    @skipIfNotPy311
+    def test_exceptiontable_parsing(self):
+        def fn():
+            try:
+                with a():
+                    b()
+                c()
+            except Exception:
+                d()
+            finally:
+                e()
+            f()
+
+        tab = bytecode_transformation.parse_exception_table(
+            fn.__code__.co_exceptiontable
+        )
+        b = bytecode_transformation.assemble_exception_table(tab)
+        self.assertEqual(b, fn.__code__.co_exceptiontable)
+
+    @skipIfNotPy311
+    def test_exceptiontable_e2e(self):
+        def fn():
+            try:
+                with a():
+                    b()
+                c()
+            except Exception:
+                d()
+            finally:
+                e()
+            f()
+
+        def nothing(*args):
+            pass
+
+        code = bytecode_transformation.transform_code_object(fn.__code__, nothing)
+        self.assertEqual(code.co_exceptiontable, fn.__code__.co_exceptiontable)
+
+    @skipIfNotPy311
+    def test_exceptiontable_e2e_2(self):
+        # last instructions of an exn_table entry is a large instruction,
+        def fn():
+            try:
+                return a
+            except Exception:
+                pass
+
+        def nothing(*args):
+            pass
+
+        code = bytecode_transformation.transform_code_object(fn.__code__, nothing)
+        self.assertEqual(code.co_exceptiontable, fn.__code__.co_exceptiontable)
+
+    @skipIfNotPy311
+    def test_exception_table_entry_propagation(self):
+        insts = []
+        for _ in range(10):
+            insts.append(bytecode_transformation.create_instruction("NOP"))
+        insts[8].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[0], insts[9], insts[0], 0, True
+        )
+        insts[0].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[0], insts[0], insts[1], 0, True
+        )
+        insts[1].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[0], insts[2], insts[2], 0, True
+        )
+        insts[5].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[4], insts[6], insts[3], 0, True
+        )
+        insts[9].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[9], insts[9], insts[4], 0, True
+        )
+        insts[7].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[7], insts[9], insts[5], 0, True
+        )
+        bytecode_transformation.propagate_exn_table_entries(insts)
+        expected = [1, 2, 2, 0, 3, 3, 3, 5, 5, 4]
+        for inst, exp in zip(insts, expected):
+            self.assertIsNotNone(inst.exn_tab_entry)
+            self.assertIs(inst.exn_tab_entry.target, insts[exp])
+
+    @skipIfNotPy311
+    def test_compute_exception_table_nested(self):
+        insts = []
+        for _ in range(10):
+            insts.append(bytecode_transformation.create_instruction("NOP"))
+        insts[8].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[0], insts[9], insts[0], 0, True
+        )
+        insts[0].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[0], insts[0], insts[1], 0, True
+        )
+        insts[1].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[0], insts[2], insts[2], 0, True
+        )
+        insts[5].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[4], insts[6], insts[3], 0, True
+        )
+        insts[9].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[9], insts[9], insts[4], 0, True
+        )
+        insts[7].exn_tab_entry = bytecode_transformation.InstructionExnTabEntry(
+            insts[7], insts[9], insts[5], 0, True
+        )
+        bytecode_transformation.update_offsets(insts)
+        tab = bytecode_transformation.compute_exception_table(insts)
+        expected = [
+            (0, 0, 1),
+            (1, 2, 2),
+            (3, 3, 0),
+            (4, 6, 3),
+            (7, 8, 5),
+            (9, 9, 4),
+        ]
+        self.assertEquals(len(tab), len(expected))
+        for entry, exp in zip(insts, expected):
+            self.assertEquals(entry.start, expected[0] * 2)
+            self.assertEquals(entry.end, expected[1] * 2)
+            self.assertEquals(entry.target, expected[2] * 2)
 
     def test_ordered_dict_alias_reconstruct(self):
         od = collections.OrderedDict
