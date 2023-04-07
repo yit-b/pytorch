@@ -236,6 +236,9 @@ class TestModuleContainers(JitTestCase):
         with self.assertRaisesRegexWithHighlight(Exception, "Enumeration is supported", "self.mods[i]"):
             torch.jit.script(M3())
 
+        with self.assertRaisesRegex(Exception, "will fail because i is not a literal"):
+            torch.jit.script(M3())
+
     def test_module_interface_special_methods(self):
         class CustomModuleInterface(torch.nn.Module):
             pass
@@ -375,6 +378,10 @@ class TestModuleContainers(JitTestCase):
         with self.assertRaisesRegexWithHighlight(RuntimeError, "Unable to extract string literal index. "
                                                                "ModuleDict indexing is only supported with string literals.",
                                                                "self.moduledict[idx]"):
+            b = AnotherBadModule()
+            torch.jit.script(b)
+
+        with self.assertRaisesRegex(Exception, "will fail because i is not a literal"):
             b = AnotherBadModule()
             torch.jit.script(b)
 
