@@ -18,7 +18,6 @@ def add_inline_constraint(symbol, min: Optional[int] = None, max: Optional[int] 
             node = ctx.get_local("symbol").as_proxy().node
             min = ctx.get_local("min").as_python_constant()
             max = ctx.get_local("max").as_python_constant()
-            constrain_range(node.meta["example_value"], min=min, max=max)
             ctx.graph().call_function(constrain_range, (node,), {"min": min, "max": max})
     else:
         constrain_range(symbol, min=min, max=max)
@@ -32,5 +31,7 @@ def add_inline_size_constraint(symbol, min: int = 2, max: Optional[int] = None):
 
     # TODO: we should investigate turning off 0/1 specialization for unbacked
     # SymInts
-    assert min >= 2, "Unable to set min size to be <= 2 because we specialize on 0/1 sizes."
+    if min < 2:
+        raise RuntimeError("Unable to set min size to be <= 2"
+                           "because we specialize on 0/1 sizes.")
     return add_inline_constraint(symbol, min, max)
