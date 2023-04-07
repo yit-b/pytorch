@@ -182,6 +182,9 @@ jobs:
           # shellcheck disable=SC2086,SC2090
           container_name=$(docker run \
             ${GPU_FLAG:-} \
+            -e NCCL_DEBUG=TRACE \
+            -e TORCH_CPP_LOG_LEVEL=INFO \
+            -e TORCH_DISTRIBUTED_DEBUG=DETAIL \
             -e BUILD_ENVIRONMENT \
             -e PR_NUMBER \
             -e GITHUB_ACTIONS \
