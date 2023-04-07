@@ -79,6 +79,8 @@ class TestExport(TestCase):
         # self.assertEqual(mutated_buffer.sum().item(), 30)
         self.assertEqual(output, mod(*inp))
 
+    @unittest.skip("RuntimeError: Python 3.11+ not yet supported for torch.compile")
+    @unittest.skip("RuntimeError: Windows not yet supported for torch.compile")
     @config.patch(dynamic_shapes=True, capture_dynamic_output_shape_ops=True, specialize_int=True, capture_scalar_outputs=True)
     def test_export_constraints(self):
 
