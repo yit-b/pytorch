@@ -134,7 +134,7 @@ def is_concrete_int(a: Union[int, SymInt]):
     true if integer is passed in.
 
     Args:
-        a (SymInt or int): Object to test if it int
+        a (SymInt or int or sympy.Number): Object to test if it int
     """
     assert isinstance(a, (SymInt, int))
 

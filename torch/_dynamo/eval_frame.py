@@ -6,8 +6,11 @@ import dis
 import functools
 import inspect
 import logging
+import math
+import operator
 import os
 import sys
+import sympy
 import textwrap
 import threading
 import traceback
@@ -762,7 +765,6 @@ def export(
             self.old_args_gen = (
                 self.new_args[i] for i in matched_input_elements_positions
             )
-
         def placeholder(self, target, args, kwargs):
             arg = next(self.old_args_gen)
             if "val" in self.current_node.meta:
@@ -783,6 +785,62 @@ def export(
             if "val" in self.current_node.meta:
                 r.node.meta["val"] = self.current_node.meta["val"]
             return r
+
+    class AddRuntimeChecksInInputConstraint(torch.fx.interpreter.Transformer):
+        def __init__(
+            self,
+            m,
+        ):
+            super().__init__(m)
+            self.count = 0
+            self.constraints_id_to_constrain = {}
+            if constraints is not None:
+                for constrain in constraints:
+                    self.constraints_id_to_constrain[constrain.t_id] = constrain
+
+        def placeholder(self, target, args, kwargs):
+            arg = super().placeholder(target, args, kwargs)
+            orig_inp_id = id(flat_args[self.count])
+
+            if orig_inp_id not in self.constraints_id_to_constrain:
+                self.count += 1
+                return arg
+
+            constrain = self.constraints_id_to_constrain[orig_inp_id]
+            constraint_range = constrain.constraint_range
+
+            if constraint_range is None:
+                self.count += 1
+                return arg
+
+            def _convert_to_int(val):
+                if val == sympy.oo:
+                    return math.inf
+                if isinstance(val, sympy.Integer):
+                    return int(val)
+                return None
+
+            min_int_val = _convert_to_int(constraint_range.vr.lower)
+            max_int_val = _convert_to_int(constraint_range.vr.upper)
+
+            if min_int_val is None and max_int_val is None:
+                self.count += 1
+                return arg
+
+            dim = self.tracer.create_proxy('call_function', torch.ops.aten.sym_size, (arg, constrain.dim), {})
+
+            if min_int_val:
+                gt = self.tracer.create_proxy('call_function', operator.gt, (dim, min_int_val), {})
+                tensor_gt = self.tracer.create_proxy('call_function', torch.scalar_tensor, (gt,), {})
+                self.tracer.create_proxy('call_function', torch.ops.aten._assert_async.msg, (tensor_gt, "min_value"), {})
+
+            if max_int_val:
+                lt = self.tracer.create_proxy('call_function', operator.lt, (dim, max_int_val), {})
+                tensor_lt = self.tracer.create_proxy('call_function', torch.scalar_tensor, (lt,), {})
+                self.tracer.create_proxy('call_function', torch.ops.aten._assert_async.msg, (tensor_lt, "max_value"), {})
+
+            self.count += 1
+            return arg
 
     if aten_graph:
         # Running graph with interpreter is needed for propagating the stack_trace
@@ -806,6 +864,10 @@ def export(
 
     new_graph = ChangeInputOutputSignature(
         graph,
+    ).transform()
+
+    new_graph = AddRuntimeChecksInInputConstraint(
+        new_graph,
     ).transform()
 
     def signature_to_fullargspec(sig: inspect.Signature):
