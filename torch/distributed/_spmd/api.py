@@ -17,12 +17,13 @@ from typing import (
     Union,
 )
 
+from functorch import make_fx
+
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.utils._pytree as pytree
 
-from functorch import make_fx
 from torch import fx
 from torch.distributed._spmd.distribute import (
     _convert_to_distributed,
@@ -476,7 +477,7 @@ def _compile(
         ) if opt else nullcontext():
             ret = func(*args, **kwargs)
             # make sure updated parameters are returned
-            return ret, list(mod.parameters())  # type: ignore[union-attr]
+            return ret, list(mod.parameters()), list(named_states.values())  # type: ignore[union-attr]
 
     # FIXME: Using symbolic tracing to work around. Otherwise it hits
     # shape mismatch error, as we use local inputs to trace local graph
