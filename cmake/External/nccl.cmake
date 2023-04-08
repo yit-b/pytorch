@@ -49,7 +49,7 @@ if(NOT __NCCL_INCLUDED)
         "NVCC=${CUDA_NVCC_EXECUTABLE}"
         "NVCC_GENCODE=${NVCC_GENCODE}"
         "BUILDDIR=${__NCCL_BUILD_DIR}"
-        "ENABLE_TRACE=1"
+        "TRACE=1"
         "VERBOSE=0"
       BUILD_BYPRODUCTS "${__NCCL_BUILD_DIR}/lib/libnccl_static.a"
       INSTALL_COMMAND ""
