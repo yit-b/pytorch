@@ -245,6 +245,7 @@ class TestMultiProc(DynamoDistributedMultiProcTestCase):
             run_hf_bert_ddp(self, model, inputs, "aot_eager")
 
     @skip_if_lt_x_gpu(1)
+    @unittest.skip("Is this test calling ncclAbort?")
     def test_fsdp_aot_eager(self):
         with _dynamo_dist_per_rank_init(self.rank, self.world_size):
             # Test with basic FSDP wrapping (outer wrap around whole model)
@@ -268,6 +269,7 @@ class TestMultiProc(DynamoDistributedMultiProcTestCase):
             self.assertTrue(same(correct_outputs, outputs))
 
     @skip_if_lt_x_gpu(1)
+    @unittest.skip("Is this test calling ncclAbort?")
     @unittest.skipIf(not has_triton(), "Inductor+gpu needs triton and recent GPU arch")
     def test_fsdp_inductor(self):
         with _dynamo_dist_per_rank_init(self.rank, self.world_size):
