@@ -31,13 +31,7 @@ from .decomposition import select_decomp_table
 from .fx_passes.joint_graph import joint_graph_passes
 from .fx_passes.post_grad import post_grad_passes
 from .graph import GraphLowering
-from .mkldnn import convert_outplace_to_inplace
-from .utils import (
-    developer_warning,
-    get_dtype_size,
-    has_incompatible_cudagraph_ops,
-    is_cpu_device,
-)
+from .utils import developer_warning, get_dtype_size, has_incompatible_cudagraph_ops
 from .virtualized import V
 
 log = logging.getLogger(__name__)
@@ -672,10 +666,6 @@ def compile_fx(
             joint_graph_passes(model)
 
         fixed = len(example_inputs) - num_example_inputs
-        # Why convert outplace op to inplace? Inductor can support inplace operations well and for custom
-        # inplace ops which are lowered as ExternKernel, it is beneficial to performance when the inplace
-        # implementation is used if available.
-        model = convert_outplace_to_inplace(model)
         return inner_compile(
             model,
             example_inputs,

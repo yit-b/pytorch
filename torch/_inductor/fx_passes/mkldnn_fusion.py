@@ -7,9 +7,11 @@ from ..pattern_matcher import (
     Arg,
     CallFunction,
     filter_nodes,
+    get_arg_value,
     KeywordArg,
     register_lowering_pattern,
 )
+from ..virtualized import ops
 
 aten = torch.ops.aten
 mkldnn = torch.ops.mkldnn
@@ -173,6 +175,16 @@ def _combined_fusion(computation_call, elementwise_op):
     return CallFunction(elementwise_op, computation_call)
 
 
+# binary_op(other, computation_op)
+def _binary_fusion_v1(computation_call, binary_fn):
+    return CallFunction(binary_fn, KeywordArg("other"), computation_call)
+
+
+# binary_op(computation_op, other)
+def _binary_fusion_v2(computation_call, binary_fn):
+    return CallFunction(binary_fn, computation_call, KeywordArg("other"))
+
+
 def _is_single_computation_op(computation_op):
     def fn(match):
         computation_nodes = filter_nodes(match.nodes, computation_op)
@@ -256,13 +268,93 @@ def _register_hardtanh_fusion_lowering(pattern, computation_op):
     return fn
 
 
-def _register_unary_fusion():
-    class UnaryAttr:
-        def __init__(self, op_name: str, scalars_attr=None, algorithm_attr=None):
-            self.op_name = op_name
-            self.scalars_attr = scalars_attr if scalars_attr else []
-            self.algorithm_attr = algorithm_attr if algorithm_attr else ""
+_binary_attr = {
+    aten.add: "add",
+    ops.add: "add",
+    aten.sub: "sub",
+    ops.sub: "sub",
+}
 
+
+def _is_valid_binary(match, fn):
+    binary_nodes = filter_nodes(match.nodes, fn)
+    if len(binary_nodes) < 1:
+        return False
+    if any(
+        not isinstance(n.args[0].meta.get("val", None), torch.Tensor)
+        or not isinstance(n.args[1].meta.get("val", None), torch.Tensor)
+        for n in binary_nodes
+    ):
+        return False
+    # check alpha is one.
+    if any(
+        get_arg_value(n, 2, kwarg_name="alpha") != 1.0
+        and get_arg_value(n, 2, kwarg_name="alpha") is not None
+        for n in binary_nodes
+    ):
+        return False
+    if any(n.args[0] == n.args[1] for n in binary_nodes):
+        return False
+    if any(
+        n.args[0].meta["val"].size() != n.args[1].meta["val"].size()
+        for n in binary_nodes
+    ):
+        return False
+    return True
+
+
+def _is_valid_computation_binary(computation_op, binary_op):
+    def fn(match):
+        if not _is_single_computation_op(computation_op)(match):
+            return False
+        if not _is_valid_binary(match, binary_op):
+            return False
+        return True
+
+    return fn
+
+
+def _register_binary_unary_fusion_lowering(
+    pattern, computation_op, binary_op, fusion_op, unary_attr=None
+):
+    @register_lowering_pattern(
+        pattern, extra_check=_is_valid_computation_binary(computation_op, binary_op)
+    )
+    def fn(match, *args, **kwargs):
+        other = kwargs.get("other")
+        binary_attr = _binary_attr[binary_op]
+        args_list = list(args)
+        compuation_args = [args_list[0], other] + args_list[1:-3] + [binary_attr]
+        if len(args_list) > 6:
+            if unary_attr is not None:
+                compuation_args += [
+                    1.0,
+                    unary_attr.op_name,
+                    unary_attr.scalars_attr,
+                    unary_attr.algorithm_attr,
+                ]
+            else:
+                compuation_args += [1.0, None, [], None]
+        return L[fusion_op](*compuation_args)
+
+    return fn
+
+
+computation_ops = [
+    mkldnn._convolution_pointwise.default,
+    mkldnn._linear_pointwise.default,
+    mkldnn._convolution_transpose_pointwise.default,
+]
+
+
+class UnaryAttr:
+    def __init__(self, op_name: str, scalars_attr=None, algorithm_attr=None):
+        self.op_name = op_name
+        self.scalars_attr = scalars_attr if scalars_attr else []
+        self.algorithm_attr = algorithm_attr if algorithm_attr else ""
+
+
+def _register_unary_fusion():
     replacement_unary_fusion_patterns = {
         UnaryAttr("gelu", algorithm_attr="tanh"): [
             _gelu_fusion_2(u) for u in _computation_user_4
@@ -283,12 +375,6 @@ def _register_unary_fusion():
             _combined_fusion(u, aten.tanh) for u in _computation_user_1
         ],
     }
-    computation_ops = [
-        mkldnn._convolution_pointwise.default,
-        mkldnn._linear_pointwise.default,
-        mkldnn._convolution_transpose_pointwise.default,
-    ]
-
     for unary_attr, patterns in replacement_unary_fusion_patterns.items():
         _register_unary_fusion_lowering(patterns[0], unary_attr, computation_ops[0])
         _register_unary_fusion_lowering(patterns[1], unary_attr, computation_ops[1])
@@ -302,5 +388,77 @@ def _register_unary_fusion():
         _register_hardtanh_fusion_lowering(pattern, computation_op)
 
 
+def _register_binary_fusion():
+    binary_ops = [aten.add, ops.add, aten.sub, ops.sub]
+    fusion_ops = [mkldnn._convolution_pointwise.binary, mkldnn._linear_pointwise.binary]
+    for computation_call, computation_op, fusion_op in zip(
+        _computation_user_1[:-1], computation_ops[:-1], fusion_ops
+    ):
+        for binary_op in binary_ops:
+            pattern = _binary_fusion_v2(computation_call, binary_op)
+            _register_binary_unary_fusion_lowering(
+                pattern, computation_op, binary_op, fusion_op
+            )
+        for binary_op in [aten.add, ops.add]:
+            pattern = _binary_fusion_v1(computation_call, binary_op)
+            _register_binary_unary_fusion_lowering(
+                pattern, computation_op, binary_op, fusion_op
+            )
+
+
+def _register_binary_unary_fusion():
+    binary_ops = [aten.add, ops.add, aten.sub, ops.sub]
+    fusion_ops = [mkldnn._convolution_pointwise.binary]
+    for computation_call, computation_op, fusion_op in zip(
+        _computation_user_1[:-1], computation_ops[:-1], fusion_ops
+    ):
+        for binary_op in binary_ops:
+            pattern_v1 = _combined_fusion(
+                _binary_fusion_v2(computation_call, binary_op), aten.relu
+            )
+            _register_binary_unary_fusion_lowering(
+                pattern_v1, computation_op, binary_op, fusion_op, UnaryAttr("relu")
+            )
+        for binary_op in [aten.add, ops.add]:
+            pattern_v2 = _combined_fusion(
+                _binary_fusion_v1(computation_call, binary_op), aten.relu
+            )
+            _register_binary_unary_fusion_lowering(
+                pattern_v2, computation_op, binary_op, fusion_op, UnaryAttr("relu")
+            )
+
+
+"""
+def convert_outplace_to_inplace(gm: torch.fx.GraphModule):
+    if not (torch.backends.mkldnn.enabled and torch.backends.mkldnn.is_available()):
+        return gm
+    # This function is about replace outplace with inplace for better performance(external call),
+    # which happen after AOTAutograd.
+    for node in gm.graph.nodes:
+        if node.op == "call_function" and node.target in [
+            torch.ops.mkldnn._convolution_pointwise.binary
+        ]:
+            # args[0] and args[1] is _convolution_pointwise.binary's input,
+            # need to check whether args[1] can be written or not.
+            if node.args[1].op in ["placeholder", "output"]:
+                continue
+            # TODO: node.args[1].users > 1, but node.args[1] never be used after current node.
+            if len(node.args[1].users) > 1:
+                continue
+            if node.args[1] == node.args[0]:
+                continue
+            binary_attr = node.args[8]
+            unary_attr = node.args[10]
+            if binary_attr != "add" or unary_attr not in ["", "relu"]:
+                continue
+            node.target = torch.ops.mkldnn._convolution_pointwise_.binary
+    gm.graph.lint()
+    gm.recompile()
+    return gm
+"""
+
+
 def _mkldnn_fusion_init():
     _register_unary_fusion()
+    _register_binary_unary_fusion()
+    _register_binary_fusion()
