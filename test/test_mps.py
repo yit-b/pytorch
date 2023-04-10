@@ -2950,7 +2950,7 @@ class TestMPS(TestCaseMPS):
 
     def test_repeat_interleave(self, device="mps"):
         x = torch.tensor([0, 1, 2, 3], device=device)
-        expected = torch.tensor([1, 2, 2, 3, 3, 3], dtype=torch.int32, device=device)
+        expected = torch.tensor([1, 2, 2, 3, 3, 3], device=device)
         self.assertEqual(torch.repeat_interleave(x), expected)
 
         with self.assertRaises(RuntimeError):
