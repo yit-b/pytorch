@@ -1496,17 +1496,78 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * for you; this class is available from 'Tensor'.
    */
   template <typename T>
-  inline T* data() const {
-    TORCH_CHECK(
-        data_type_.Match<T>(),
-        "Tensor type mismatch, caller expects elements to be ",
-        caffe2::TypeMeta::TypeName<T>(),
-        ", while tensor contains ",
-        data_type_.name(),
-        ". ");
-    return legacy_mutable_data_ptr_impl<T>();
+  const T* data_dtype_initialized() const {
+    return data_dtype_initialized_impl<T, decltype(*this)>()(
+        *this, &Storage::data);
   }
 
+  /**
+   * Return a mutable typed data pointer to the actual data which this
+   * tensor refers to. This checks that the requested type (from the
+   * template parameter) matches the internal type of the tensor.
+   *
+   * It is invalid to call data() on a dtype-uninitialized tensor, even if
+   * the size is 0.
+   *
+   * WARNING: If a tensor is not contiguous, you MUST use strides when
+   * performing index calculations to determine the location of elements in
+   * the tensor.  We recommend using 'TensorAccessor' to handle this computation
+   * for you; this class is available from 'Tensor'.
+   */
+  template <typename T>
+  T* mutable_data_dtype_initialized() {
+    return data_dtype_initialized_impl<T, decltype(*this)>()(
+        *this, &Storage::mutable_data);
+  }
+
+ private:
+  // NOTE [ Template over constness of this ]
+  //
+  // We're using a trick a few places in this file to share the
+  // implementation between const and non-const methods. C++ doesn't
+  // let you template over the const qualifier on a method, but you
+  // can template over the constness of the class's argument in a
+  // static method.
+  //
+  // Implementation notes:
+  //  * The main trick we employ here is to create a static method
+  //    that is templated on TensorImpl. This lets us write a single
+  //    body that can be used for both const and non-const methods.
+  //  * The second main trick is to use a dependent template that
+  //    carries the constness of the tensor and can apply it to
+  //    additional types.
+
+  // Shared implementation of data_dtype_initialized() and
+  // mutable_data_dtype_initialized() regardless of constness.
+  //
+  // See NOTE [ Template over constness of this ].
+  template <typename T, typename Self>
+  struct data_dtype_initialized_impl {
+    static_assert(std::is_same<
+                  std::remove_const_t<std::remove_reference_t<Self>>,
+                  TensorImpl>::value);
+
+    template <typename U>
+    using MaybeConstT = std::conditional_t<
+        std::is_const<std::remove_reference_t<Self>>::value,
+        const U,
+        U>;
+
+    MaybeConstT<T>* operator()(
+        Self& self,
+        MaybeConstT<void>* (Storage::*data_accessor)() const) {
+      TORCH_CHECK(
+          self.data_type_.template Match<T>(),
+          "Tensor type mismatch, caller expects elements to be ",
+          caffe2::TypeMeta::TypeName<T>(),
+          ", while tensor contains ",
+          self.data_type_.name(),
+          ". ");
+      return data_ptr_impl<T, Self>()(self, data_accessor);
+    }
+  };
+
+ public:
   /**
    * More efficient helper for Tensor::data_ptr(). Like data<T>(), but
    * does not do a type check. Unlike the untemplated data(), does
@@ -1514,28 +1575,42 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    */
   template <typename T>
   inline T* mutable_data_ptr_impl() {
-    return legacy_mutable_data_ptr_impl<T>();
+    return data_ptr_impl<T, decltype(*this)>()(*this, &Storage::mutable_data);
   }
 
  private:
-  // The real implementation of mutable_data_ptr_impl, but in a
-  // non-const method.
+  // Shared implementation of data_ptr_impl() and
+  // mutable_data_ptr_impl() regardless of constness.
   //
-  // TODO: move the implementation into mutable_data_ptr_impl() and
-  // delete this when data<T>() is no longer const.
-  template <typename T>
-  inline T* legacy_mutable_data_ptr_impl() const {
-    TORCH_CHECK(
-        has_storage(),
-        "Cannot access data pointer of Tensor that doesn't have storage");
-    TORCH_CHECK(
-        storage_initialized(),
-        "The tensor has a non-zero number of elements, but its data is not allocated yet. "
-        "Caffe2 uses a lazy allocation, so you will need to call "
-        "mutable_data() or raw_mutable_data() to actually allocate memory.");
-    // Caller does the type check.
-    return static_cast<T*>(storage_.mutable_data()) + storage_offset_;
-  }
+  // See NOTE [ Template over constness of this ].
+  template <typename T, typename Self>
+  struct data_ptr_impl {
+    static_assert(std::is_same<
+                  std::remove_const_t<std::remove_reference_t<Self>>,
+                  TensorImpl>::value);
+
+    template <typename U>
+    using MaybeConstT = std::conditional_t<
+        std::is_const<std::remove_reference_t<Self>>::value,
+        const U,
+        U>;
+
+    MaybeConstT<T>* operator()(
+        Self& self,
+        MaybeConstT<void>* (Storage::*data_accessor)() const) {
+      TORCH_CHECK(
+          self.has_storage(),
+          "Cannot access data pointer of Tensor that doesn't have storage");
+      TORCH_CHECK(
+          self.storage_initialized(),
+          "The tensor has a non-zero number of elements, but its data is not allocated yet. "
+          "Caffe2 uses a lazy allocation, so you will need to call "
+          "mutable_data() or raw_mutable_data() to actually allocate memory.");
+      // Caller does the type check.
+      return static_cast<MaybeConstT<T>*>((self.storage_.*data_accessor)()) +
+          self.storage_offset_;
+    }
+  };
 
  public:
   /**
@@ -1571,13 +1646,7 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
   // Shared implementation of data() and mutable_data() regardless of
   // constness.
   //
-  // Implementation notes:
-  //  * The main trick we employ here is to create a static method
-  //    that is templated on TensorImpl. This lets us write a single
-  //    body that can be used for both const and non-const methods.
-  //  * The second main trick is to use a dependent template that
-  //    carries the constness of the tensor and can apply it to
-  //    additional types.
+  // See NOTE [ Template over constness of this ].
   template <typename Self>
   struct data_impl {
     static_assert(std::is_same<
