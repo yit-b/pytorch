@@ -1426,6 +1426,19 @@ Vectorized<uint8_t> inline operator>>(const Vectorized<uint8_t>& a, const Vector
   return shift_512_8<false>(a, b);
 }
 
+#if defined(CPU_CAPABILITY_AVX512) && !defined(_MSC_VER)
+inline Vectorized<float> load_uint8_as_float(const uint8_t* src_data) {
+  // Load 16*uint8
+  __m512i input_512 = Vectorized<uint8_t>::loadu(src_data, 16);
+  // Take the first 128bit
+  __m128i input_128 = _mm512_castsi512_si128(input_512);
+  // Convert from 16*u8 to 16*int32
+  __m512i input_512_extended = _mm512_cvtepu8_epi32(input_128);
+  // Convert from 16*int32 to 16*float32
+  return _mm512_cvtepi32_ps(input_512_extended);
+}
+#endif
+
 #endif
 
 }}}
